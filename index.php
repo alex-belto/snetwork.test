@@ -1,20 +1,18 @@
 <?php 
-    error_reporting(E_ALL);
-    ini_set('display_errors', 'on');
+    include 'include.php';
 
-    $host = 'localhost';
-    $user = 'root';
-    $password = 'root';
-    $dbName = 'test';
-
-    $link = mysqli_connect($host, $user, $password, $dbName);
-    mysqli_query($link, "SET NAMES 'utf-8'");
 
     $uri = trim(preg_replace('#(\?.*)?#', '', $_SERVER['REQUEST_URI']), '/');
-    var_dump($uri);
+    //var_dump($uri);
 
     if(empty($uri)){
         $uri = '/'; 
+    }
+
+    if(!empty($uri)){
+        preg_match_all('#/(A-Za-z0-9){3,16}(/)?.*#', $_SERVER['REQUEST_URI'], $matches);
+        $fromName = $matches[1][0];
+        //echo $fromName;
     }
     
     var_dump($_SERVER['REQUEST_URI']);
@@ -31,6 +29,10 @@
     }
         $title = $page['title'];
         $content = $page['text'];
-   
+
+
+    function registration($link){
+
+    }
 
     include 'layout.php';
