@@ -94,5 +94,43 @@
         }
     }
 
+    function auth($link){
+        if(isset($_POST['login']) AND isset($_POST['password'])){
+            $login = $_POST['login'];
+            $password = $_POST['password'];
+
+            $query = "SELECT * FROM users WHERE login = '$login'";
+            $user = mysqli_fetch_assoc(mysqli_query($link, $query));
+
+            if(!empty($user)){
+                $hash = $user['password'];
+                if(password_verify($password, $hash)){
+                    $_SESSION['auth'] = true;
+                    $_SESSION['userName'] = $user['name'];
+                    $_SESSION['userAge'] = $user['age'];
+                    $_SESSION['userGender'] = $user['gender'];
+                    $_SESSION['userEmail'] = $user['email'];
+                    $_SESSION['userTel'] = $user['tel'];
+
+                    $_SESSION['message'] = 'Вход произведен успешно!';
+                    header('Location: /');
+                }else{
+                    $_SESSION['message'] = 'Данные входа указаны неверно!';
+                }
+            }else{
+                $_SESSION['message'] = 'Такого пользователя не существует!';
+            }
+        }
+    }
+
+    function logout($matches){
+        
+        if(!empty($matches[1][0]) AND $matches[1][0] == 'logout'){
+            unset($_SESSION['auth']);
+        }
+    }
+
     registration($link);
+    auth($link);
+    logout($matches);
     include 'layout.php';
