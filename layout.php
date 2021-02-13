@@ -10,6 +10,8 @@
                 <?php include 'elems/header.php' ?>
             </header>
             <main>
+                <?php if(!empty($_SESSION['message'])) echo $_SESSION['message']; unset($_SESSION['message']); ?>  
+                <?php if(!empty($formContent)){echo $formContent;}  ?>
                 <p><?= $content ?></p>
             </main>
             <footer>
