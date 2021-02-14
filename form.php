@@ -2,7 +2,7 @@
 
     function registrForm(){
         return $formContent = "
-        <form action='' method='POST'>
+        <form action='' method='POST' enctype='multipart/form-data'>
             <p>Имя</p>
             <input type='text' name='name'>
             <p>Пол</p>
@@ -18,7 +18,9 @@
             <p>Пароль</p>
             <input type='password' name='password'></br>
             <p>Повтор Пароль</p>
-            <input type='password' name='confirm'></br></br>
+            <input type='password' name='confirm'>
+            <p>Добавьте свое фото</p>
+            <input type='file' name='user_img'><br><br>
             <input type='submit' name='regSubmit' value='Отправить'>
         
         </form>";

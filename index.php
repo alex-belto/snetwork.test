@@ -2,6 +2,7 @@
     include 'include.php';
     include 'form.php';
 
+    
 
     $uri = trim(preg_replace('#(\?.*)?#', '', $_SERVER['REQUEST_URI']), '/');
    
@@ -53,12 +54,14 @@
             $name = $_POST['name'];
             $age = $_POST['age'];
             $gender = $_POST['gender'];
+            $imgName = $_FILES['user_img']['name'];
+            $imgTmpName = $_FILES['user_img']['tmp_name'];
             $email = $_POST['email'];
             $tel = $_POST['tel'];
             $login = $_POST['login'];
             $password = $_POST['password'];
             $confirm = $_POST['confirm'];
-            
+            $imgPath = '/Applications/MAMP/htdocs/snetwork.test/imgsn/'.$_FILES['user_img']['name'];//путь к файлу
             
             $query = "SELECT login FROM users WHERE login = '$login'";
             $result = mysqli_fetch_assoc(mysqli_query($link, $query));
@@ -70,9 +73,13 @@
                     if(preg_match('#^[A-Za-z0-9].+\@[a-z]{3,5}\.[a-z]{2,3}$#', $_POST['email']) == 1){//email
                         if(preg_match('#^\+?[0-9]{9,12}$#', $_POST['tel']) == 1){//tel
 
-                            $query = "INSERT INTO users (name, age, gender, email, tel, login, password) VALUES ('$name', '$age', '$gender', '$email', '$tel', '$login', '$password')";
+                            move_uploaded_file($imgTmpName, $imgPath);//загрузка файла на диск
+
+                            $query = "INSERT INTO users (name, age, gender, img, email, tel, login, password) VALUES ('$name', '$age', '$gender', '$imgName', '$email', '$tel', '$login', '$password')";
                             mysqli_query($link, $query) or die(mysqli_error($link));
                             $_SESSION['message'] = 'Запись успешно добавлена!';
+
+                            move_uploaded_file($imgTmpName, $imgPath);
 
                         }else{
                             $_SESSION['message'] = 'проблема с номером телефона';//email
@@ -106,11 +113,9 @@
                 $hash = $user['password'];
                 if(password_verify($password, $hash)){
                     $_SESSION['auth'] = true;
+                    $_SESSION['userId'] = $user['id'];
                     $_SESSION['userName'] = $user['name'];
-                    $_SESSION['userAge'] = $user['age'];
-                    $_SESSION['userGender'] = $user['gender'];
-                    $_SESSION['userEmail'] = $user['email'];
-                    $_SESSION['userTel'] = $user['tel'];
+
 
                     $_SESSION['message'] = 'Вход произведен успешно!';
                     header('Location: /');
@@ -127,9 +132,53 @@
         
         if(!empty($matches[1][0]) AND $matches[1][0] == 'logout'){
             unset($_SESSION['auth']);
+            header('Location: /');
         }
     }
 
+    function profile($link, $uri){
+        if($uri == '/' AND !empty($_SESSION['auth'])){
+           
+            $userId = $_SESSION['userId'];
+
+            $query = "SELECT * FROM users WHERE id = '$userId'";
+            $user = mysqli_fetch_assoc(mysqli_query($link, $query));
+
+            $userImg = '/imgsn/'.$user['img'];
+            $userName = $user['name'];
+            $userAge = $user['age'];
+            $userGender = $user['gender'];
+            $userEmail = $user['email'];
+            $userTel = $user['tel'];
+            
+            return $content = "
+            <table>
+                <tr>
+                    <td><img src='$userImg' width='200' height='111'></td>
+                </tr>
+                <tr>
+                    <td>$userName</td>
+                </tr>
+                <tr>
+                    <td>$userAge</td>
+                </tr>
+                <tr>
+                    <td>$userGender</td>
+                </tr>
+                <tr>
+                    <td>$userEmail</td>
+                </tr>
+                <tr>
+                    <td>$userTel</td>
+                </tr>
+               
+            </table>";
+
+          
+        }
+    }
+
+    $content = profile($link, $uri);
     registration($link);
     auth($link);
     logout($matches);

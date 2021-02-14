@@ -3,8 +3,9 @@ RewriteBase /
 
 
 
-RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/assets/ 
+RewriteCond %{REQUEST_URI} !^/imgsn/
 RewriteRule .* index.php
 
 
-ErrorDocument 404 /404.html
+#ErrorDocument 404 /404.html
