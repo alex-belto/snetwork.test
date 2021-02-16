@@ -198,12 +198,17 @@
         }
     }
 
-    function users($link, $uri){
+    function users($link){
             if(isset($_SESSION['auth'])){
 
             $sessionId = $_SESSION['userId'];
             $content = '';
-            $query = "SELECT id, name, age, gender, img FROM users WHERE id != '$sessionId'";
+
+            $query = "SELECT friends FROM users WHERE id = '$sessionId'";
+            $result = mysqli_fetch_assoc(mysqli_query($link, $query));
+            $notList = $result['friends'].','.$sessionId;
+
+            $query = "SELECT id, name, age, gender, img FROM users WHERE id NOT IN ($notList)";
             $result = mysqli_query($link, $query) or die(mysqli_error($link));
             for($users = []; $step = mysqli_fetch_assoc($result); $users[] = $step);
 
@@ -302,7 +307,7 @@
         }
     }
 
-    function friendlist($link, $uri){
+    function friendlist($link){
         if(isset($_SESSION['auth'])){
 
             $sessionId = $_SESSION['userId'];
@@ -368,10 +373,10 @@
             $content = profile($link, $uri);
             break;
         case 'users':
-            $content = users($link, $uri);
+            $content = users($link);
             break;
         case 'friends':
-            $content = friendlist($link, $uri);
+            $content = friendlist($link);
             break;
     }
     
