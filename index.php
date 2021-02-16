@@ -5,12 +5,12 @@
     
 
     $uri = trim(preg_replace('#(\?.*)?#', '', $_SERVER['REQUEST_URI']), '/');
-   
+    //var_dump($_SERVER['REQUEST_URI']) ;
 
     if(empty($uri)){
         $uri = '/'; 
     }
-    //var_dump($_SERVER['REQUEST_URI']);
+    
     if(!empty($uri)){
         preg_match_all('#/([A-Za-z]{3,16})/#', $_SERVER['REQUEST_URI'], $matches);
         //var_dump($matches);
@@ -138,20 +138,29 @@
 
     function profile($link, $uri){
         if($uri == '/' AND !empty($_SESSION['auth'])){
-           
-            $userId = $_SESSION['userId'];
+
+            if(isset($_GET['id'])){
+                $userId = $_GET['id'];
+            }else if(isset($_GET['add_friend'])){
+                $userId = $_GET['add_friend'];
+            }else{
+                $userId = $_SESSION['userId'];
+            }
+            
 
             $query = "SELECT * FROM users WHERE id = '$userId'";
             $user = mysqli_fetch_assoc(mysqli_query($link, $query));
 
+            $content = '';
             $userImg = '/imgsn/'.$user['img'];
             $userName = $user['name'];
             $userAge = $user['age'];
             $userGender = $user['gender'];
             $userEmail = $user['email'];
             $userTel = $user['tel'];
+            $hrefAddFriend = '/'.'?add_friend='.$user['id'];
             
-            return $content = "
+             $content .= "
             <table>
                 <tr>
                     <td><img src='$userImg' width='200' height='111'></td>
@@ -170,15 +179,203 @@
                 </tr>
                 <tr>
                     <td>$userTel</td>
-                </tr>
-               
-            </table>";
+                </tr>";
 
+                if(isset($_GET['id'])){
+                    $content .= "
+                <tr>
+                    <td><a href='$hrefAddFriend'>Добавить в друзья</a></td>
+                </tr>";
+
+                }
+               
+                $content .= "</table>";
+
+                return $content;
           
+        }else{
+            $_SESSION['message'] = 'Войдите в акаунт или зарегистрируйтесь для дальнейшей работы!';
         }
     }
 
-    $content = profile($link, $uri);
+    function users($link, $uri){
+            if(isset($_SESSION['auth'])){
+
+            $sessionId = $_SESSION['userId'];
+            $content = '';
+            $query = "SELECT id, name, age, gender, img FROM users WHERE id != '$sessionId'";
+            $result = mysqli_query($link, $query) or die(mysqli_error($link));
+            for($users = []; $step = mysqli_fetch_assoc($result); $users[] = $step);
+
+            $content .= "<table>";
+            
+            foreach($users as $value){
+
+                $UsersId = $value['id'];
+                $name = $value['name'];
+                $age = $value['age'];
+                $gender = $value['gender'];
+                $img = '/imgsn/'.$value['img'];
+                $href = '/'.'?id='.$value['id'];
+                $hrefAddFriend = '/'.'?add_friend='.$value['id'];
+                
+                $content .= "
+                <tr>
+                    <td><img src='$img' width='150' height='111'></td>
+                </tr>
+                <tr>
+                    <td><a href='$href'>$name</a></td>
+                </tr>
+                <tr>
+                    <td>$age</td>
+                </tr>
+                <tr>
+                    <td>$gender</td>
+                </tr>";
+                if($sessionId !== $UsersId){
+                    $content .= "
+                <tr>
+                    <td><a href='$hrefAddFriend'>Добавить в друзья</a></td>
+                </tr>";
+
+                }
+                $content .= "<tr>
+                    <td>------------------------------------</td>
+                </tr>";
+            }
+
+            $content .= "</table>";
+
+            return $content;
+            }else{
+                $_SESSION['message'] = 'Войдите в акаунт или зарегистрируйтесь для дальнейшей работы!';
+            }
+            
+    }
+    function addAndDellFriends($link){
+        if(isset($_GET['add_friend'])){
+            
+            $newFriendId = $_GET['add_friend'];
+            $userId = $_SESSION['userId'];
+            $newList = '';
+            
+            $query = "SELECT name FROM users WHERE id = '$newFriendId'";
+            $nFName = mysqli_fetch_assoc(mysqli_query($link, $query));
+            $newFName = $nFName['name'];
+
+            $query = "SELECT friends FROM users WHERE id = '$userId'";
+            $friendList = mysqli_fetch_assoc(mysqli_query($link, $query));
+            
+
+            if($friendList['friends'] == NULL){
+                $newList = $_GET['add_friend'];
+            }else{
+                $newList = $friendList['friends'].','.$_GET['add_friend'];
+            }
+
+            $query = "UPDATE users SET friends='$newList' WHERE id = '$userId'";
+            mysqli_query($link, $query) or die(mysqli_error($link));
+
+            $_SESSION['message'] = $newFName.' добавлен в список ваших друзей';
+
+        }
+        if(isset($_GET['dell_friend'])){
+
+            $friendId = $_GET['dell_friend'];
+            $userId = $_SESSION['userId'];
+            $newList = '';
+
+            $query = "SELECT name FROM users WHERE id = '$friendId'";
+            $nFName = mysqli_fetch_assoc(mysqli_query($link, $query));
+            $newFName = $nFName['name'];
+
+            $query = "SELECT friends FROM users WHERE id = '$userId'";
+            $result = mysqli_fetch_assoc(mysqli_query($link, $query));
+            $friendList = $result['friends'];
+
+            $newList = preg_replace("#(,$friendId)#", '', $friendList);
+            
+            $query = "UPDATE users SET friends='$newList' WHERE id = '$userId'";
+            mysqli_query($link, $query) or die(mysqli_error($link));
+
+            $_SESSION['message'] = $newFName.' Удален из списка ваших друзей';
+        }
+    }
+
+    function friendlist($link, $uri){
+        if(isset($_SESSION['auth'])){
+
+            $sessionId = $_SESSION['userId'];
+            $content = '';
+
+            $query = "SELECT friends FROM users WHERE id = '$sessionId'";
+            $result = mysqli_fetch_assoc(mysqli_query($link, $query));
+            $friendlist = $result['friends'];
+            
+            
+
+            $query = "SELECT id, name, age, gender, img FROM users WHERE id IN ($friendlist)";
+            $result = mysqli_query($link, $query) or die(mysqli_error($link));
+            for($users = []; $step = mysqli_fetch_assoc($result); $users[] = $step);
+
+            $content .= "<table>";
+            
+            foreach($users as $value){
+
+                $UsersId = $value['id'];
+                $name = $value['name'];
+                $age = $value['age'];
+                $gender = $value['gender'];
+                $img = '/imgsn/'.$value['img'];
+                $href = '/'.'?id='.$value['id'];
+                $hrefDellFriend = '/'.'?dell_friend='.$value['id'];
+                
+                $content .= "
+                <tr>
+                    <td><img src='$img' width='150' height='111'></td>
+                </tr>
+                <tr>
+                    <td><a href='$href'>$name</a></td>
+                </tr>
+                <tr>
+                    <td>$age</td>
+                </tr>
+                <tr>
+                    <td>$gender</td>
+                </tr>";
+                if($sessionId !== $UsersId){
+                    $content .= "
+                <tr>
+                    <td><a href='$hrefDellFriend'>Удалить из друзей</a></td>
+                </tr>";
+
+                }
+                $content .= "<tr>
+                    <td>------------------------------------</td>
+                </tr>";
+            }
+
+            $content .= "</table>";
+
+            return $content;
+            }else{
+                $_SESSION['message'] = 'Войдите в акаунт или зарегистрируйтесь для дальнейшей работы!';
+            }
+    }
+    
+    switch($uri){
+        case '/':
+            $content = profile($link, $uri);
+            break;
+        case 'users':
+            $content = users($link, $uri);
+            break;
+        case 'friends':
+            $content = friendlist($link, $uri);
+            break;
+    }
+    
+    addAndDellFriends($link);
     registration($link);
     auth($link);
     logout($matches);

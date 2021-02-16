@@ -37,5 +37,16 @@
         </form>";
     }
 
+    function wallForm(){
+        return $formContent = "
+        <form action='' method='POST'>
+            <p>Вы можете оставить щапись на стене:</p>
+            <input type='text' name='login'> 
+            <p>Введите пароль:</p>
+            <input type='password' name='password'></br></br>
+            <input type='submit' name='loginSubmit'> 
+        </form>";
+    }
+
 
 
