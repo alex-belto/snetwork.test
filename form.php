@@ -38,13 +38,16 @@
     }
 
     function wallForm(){
+        if(isset($_POST['sub_coment_submit']) OR isset($_POST['subComentSubmit'])){
+            $submitName = "name='subComentSubmit'";
+        }else{
+            $submitName = "name='postToWallSubmit'";
+        }
         return $formContent = "
         <form action='' method='POST'>
-            <p>Вы можете оставить щапись на стене:</p>
-            <input type='text' name='login'> 
-            <p>Введите пароль:</p>
-            <input type='password' name='password'></br></br>
-            <input type='submit' name='loginSubmit'> 
+            <p>Вы можете оставить запись на стене:</p>
+            <input type='text' name='text'></br></br>
+            <input type='submit' $submitName value='Оставить запись'> 
         </form>";
     }
 

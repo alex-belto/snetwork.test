@@ -28,6 +28,9 @@
             case 'login':
                 $formContent = loginForm();
                 break;
+            case 'index':
+                $wallFormContent = wallForm();
+                break;
         }
     }
     
@@ -148,10 +151,18 @@
             }
             
 
-            $query = "SELECT * FROM users WHERE id = '$userId'";
+            $query = "SELECT * FROM users WHERE id = '$userId'"; //данные пользователя
             $user = mysqli_fetch_assoc(mysqli_query($link, $query));
 
+            $query = "SELECT * FROM wall WHERE recipient_id = '$userId'"; //записи стены
+            $result = mysqli_query($link, $query);
+            for($posts = []; $step = mysqli_fetch_assoc($result); $posts[] = $step);
             $content = '';
+
+            
+
+            $content = '';
+        
             $userImg = '/imgsn/'.$user['img'];
             $userName = $user['name'];
             $userAge = $user['age'];
@@ -184,13 +195,62 @@
                 if(isset($_GET['id'])){
                     $content .= "
                 <tr>
-                    <td><a href='$hrefAddFriend'>Добавить в друзья</a></td>
+                    <td><a href='$hrefAddFriend'>Добавить в друзья</a><br><br></td>
                 </tr>";
 
                 }
-               
                 $content .= "</table>";
+                
+                if($posts){
+                    foreach($posts as $post){
+                        $postId = $post['id'];
+                        $senderId = $post['sender_id'];
+                        $senderName = $post['sender_name'];
+                        $text = $post['text'];
+                        $date = date('d.m.Y', $post['date']);
 
+                        $query = "SELECT * FROM answers WHERE post_id = '$postId'"; //записи коментов к стене
+                        $result = mysqli_query($link, $query);
+                        for($answer = []; $step = mysqli_fetch_assoc($result); $answer[] = $step);
+    
+                        $content .= "<table class='wall'>";
+                            $content .="
+                            <tr>
+                                <td>$text</td>
+                            </tr>
+                            <tr>
+                                <td>Отправитель: <a href='/?id=$senderId'>$senderName</a></td>
+                                <td>Дата отправления: $date</td>
+                            </tr>
+                            <tr>
+                                <td><form action='' method='POST'>
+                                    <input type='hidden' name='postId' value='$postId'>
+                                    <input type='submit' name='sub_coment_submit' value='Ответить'>
+                                    </form></td>
+                            </tr>";
+                            if($answer){
+                                foreach($answer as $comment){
+                                    $senderId = $comment['sender_id'];
+                                    $senderName = $comment['sender_name'];
+                                    $text = $comment['text'];
+                                    $date = date('d.m.Y', $comment['date']);
+                                    $content.= "<table class='comment'>";
+                                    $content .= "
+                                    <tr>
+                                        <td>$text</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Отправитель: <a href='/?id=$senderId'>$senderName</a></td>
+                                        <td>Дата отправления: $date</td>
+                                    </tr>";
+                                    $content .= "</table>";
+                                }
+                            }
+                        $content .= "</table></br></br>";
+                    }
+                }
+                
+                
                 return $content;
           
         }else{
@@ -206,9 +266,13 @@
 
             $query = "SELECT friends FROM users WHERE id = '$sessionId'";
             $result = mysqli_fetch_assoc(mysqli_query($link, $query));
-            $notList = $result['friends'].','.$sessionId;
+            if(!empty($result['friends'])){
+                $notList = 'NOT IN ('.$result['friends'].','.$sessionId.')';
+            }else{
+                $notList = '!='.$sessionId;
+            }
 
-            $query = "SELECT id, name, age, gender, img FROM users WHERE id NOT IN ($notList)";
+            $query = "SELECT id, name, age, gender, img FROM users WHERE id $notList";
             $result = mysqli_query($link, $query) or die(mysqli_error($link));
             for($users = []; $step = mysqli_fetch_assoc($result); $users[] = $step);
 
@@ -291,19 +355,19 @@
             $newList = '';
 
             $query = "SELECT name FROM users WHERE id = '$friendId'";
-            $nFName = mysqli_fetch_assoc(mysqli_query($link, $query));
-            $newFName = $nFName['name'];
+            $FName = mysqli_fetch_assoc(mysqli_query($link, $query));
+            $friendName = $FName['name'];
 
             $query = "SELECT friends FROM users WHERE id = '$userId'";
             $result = mysqli_fetch_assoc(mysqli_query($link, $query));
             $friendList = $result['friends'];
 
-            $newList = preg_replace("#(,$friendId)#", '', $friendList);
+            $newList = preg_replace("#(,?$friendId,?)#", '', $friendList);
             
             $query = "UPDATE users SET friends='$newList' WHERE id = '$userId'";
             mysqli_query($link, $query) or die(mysqli_error($link));
 
-            $_SESSION['message'] = $newFName.' Удален из списка ваших друзей';
+            $_SESSION['message'] = $friendName.' Удален из списка ваших друзей';
         }
     }
 
@@ -318,8 +382,8 @@
             $friendlist = $result['friends'];
             
             
-
-            $query = "SELECT id, name, age, gender, img FROM users WHERE id IN ($friendlist)";
+            if($friendlist){
+                $query = "SELECT id, name, age, gender, img FROM users WHERE id IN ($friendlist)";
             $result = mysqli_query($link, $query) or die(mysqli_error($link));
             for($users = []; $step = mysqli_fetch_assoc($result); $users[] = $step);
 
@@ -358,14 +422,52 @@
                 $content .= "<tr>
                     <td>------------------------------------</td>
                 </tr>";
+                }
+
+                $content .= "</table>";
+
+                return $content;
+            }else{
+                $_SESSION['message'] = 'Список друзей пуст!';
             }
-
-            $content .= "</table>";
-
-            return $content;
+            
             }else{
                 $_SESSION['message'] = 'Войдите в акаунт или зарегистрируйтесь для дальнейшей работы!';
             }
+    }
+
+    function addPostToWall($link){
+        if(!empty($_POST['postToWallSubmit']) OR !empty($_POST['sub_coment_submit']) OR !empty($_POST['subComentSubmit']) AND isset($_SESSION['auth'])){
+
+            if(!isset($_GET['id'])){
+                $recipientId = $_SESSION['userId'];
+            }else{
+                $recipientId = $_GET['id'];
+            }
+            $senderId = $_SESSION['userId'];
+            $senderName = $_SESSION['userName'];
+            if(isset($_POST['postId'])){
+                $_SESSION['postId'] = $_POST['postId'];
+            }
+            
+            $date = time();
+            var_dump($_POST);
+            if(isset($_POST['postToWallSubmit'])){
+                $text = $_POST['text'];
+                $query = "INSERT INTO wall (recipient_id, sender_id, sender_name, text, date) VALUES ('$recipientId', '$senderId', '$senderName', '$text', '$date')";
+                mysqli_query($link, $query) or die(mysqli_error($link));
+                $_SESSION['message'] = 'Запись добавлена';
+
+            }
+            if(isset($_POST['subComentSubmit'])){
+                $postId = $_SESSION['postId'];
+                $text = $_POST['text'];
+                $query = "INSERT INTO answers (post_id, sender_id, sender_name, text, date) VALUES ('$postId', '$senderId', '$senderName', '$text', '$date')";
+                mysqli_query($link, $query) or die(mysqli_error($link));
+                $_SESSION['message'] = 'Запись добавлена';
+            }
+            
+        }
     }
     
     switch($uri){
@@ -380,6 +482,7 @@
             break;
     }
     
+    addPostToWall($link);
     addAndDellFriends($link);
     registration($link);
     auth($link);

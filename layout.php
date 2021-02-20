@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <link rel="stylesheet" href="/assets/style.css">
+        <link rel="stylesheet" href="/assets/style.css?v=1">
         <title><?= $title ?></title>
     </head>
     <body>
@@ -16,6 +16,7 @@
                  } ?>  
                 <?php if(!empty($formContent)){echo $formContent;}  ?>
                 <p><?= $content ?></p>
+                <?php if(isset($_SESSION['auth']) AND !empty($wallFormContent)){echo $wallFormContent;}  ?>
             </main>
             <footer>
                 <p>footer</p>

@@ -13,3 +13,13 @@ header a.active {
 footer {
     color:rgb(71, 139, 82);
 }
+
+.wall {
+    border-left: 1px solid black;
+    
+}
+
+.comment {
+    margin-left: 50px;
+    border-left: 1px solid black;
+}
