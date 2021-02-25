@@ -31,6 +31,12 @@
             case 'index':
                 $wallFormContent = wallForm();
                 break;
+            case 'chat':
+                if(!empty($_GET['send_message'])){
+                    $wallFormContent = chatForm();
+                }
+                
+                break;
         }
     }
     
@@ -146,6 +152,8 @@
                 $userId = $_GET['id'];
             }else if(isset($_GET['add_friend'])){
                 $userId = $_GET['add_friend'];
+            }else if(isset($_GET['send_message'])){
+                $userId = $_GET['send_message'];
             }else{
                 $userId = $_SESSION['userId'];
             }
@@ -170,6 +178,7 @@
             $userEmail = $user['email'];
             $userTel = $user['tel'];
             $hrefAddFriend = '/'.'?add_friend='.$user['id'];
+            $sendMessage = 'chat/'.'?send_message='.$user['id'];
             
              $content .= "
             <table>
@@ -195,7 +204,10 @@
                 if(isset($_GET['id'])){
                     $content .= "
                 <tr>
-                    <td><a href='$hrefAddFriend'>Добавить в друзья</a><br><br></td>
+                    <td><a href='$hrefAddFriend'>Добавить в друзья</a></td>
+                </tr>
+                <tr>
+                    <td><a href='$sendMessage'>Написать сообщение</a><br><br></td>
                 </tr>";
 
                 }
@@ -287,7 +299,8 @@
                 $img = '/imgsn/'.$value['img'];
                 $href = '/'.'?id='.$value['id'];
                 $hrefAddFriend = '/'.'?add_friend='.$value['id'];
-                
+                $sendMessage = '/chat/'.'?send_message='.$value['id'];
+
                 $content .= "
                 <tr>
                     <td><img src='$img' width='150' height='111'></td>
@@ -308,7 +321,12 @@
                 </tr>";
 
                 }
-                $content .= "<tr>
+
+                $content .= "
+                <tr>
+                    <td><a href='$sendMessage'>Написать сообщение</a><br><br></td>
+                </tr>
+                <tr>
                     <td>------------------------------------</td>
                 </tr>";
             }
@@ -398,7 +416,8 @@
                 $img = '/imgsn/'.$value['img'];
                 $href = '/'.'?id='.$value['id'];
                 $hrefDellFriend = '/'.'?dell_friend='.$value['id'];
-                
+                $sendMessage = '/chat/'.'?send_message='.$value['id'];
+
                 $content .= "
                 <tr>
                     <td><img src='$img' width='150' height='111'></td>
@@ -419,7 +438,12 @@
                 </tr>";
 
                 }
-                $content .= "<tr>
+                
+                $content .= "
+                <tr>
+                    <td><a href='$sendMessage'>Написать сообщение</a><br><br></td>
+                </tr>
+                <tr>
                     <td>------------------------------------</td>
                 </tr>";
                 }
@@ -436,7 +460,7 @@
             }
     }
 
-    function addPostToWall($link){
+    function addPostToWall($link, $uri){
         if(!empty($_POST['postToWallSubmit']) OR !empty($_POST['sub_coment_submit']) OR !empty($_POST['subComentSubmit']) AND isset($_SESSION['auth'])){
 
             if(!isset($_GET['id'])){
@@ -449,14 +473,15 @@
             if(isset($_POST['postId'])){
                 $_SESSION['postId'] = $_POST['postId'];
             }
-            
+            $server_uri = $_SERVER['REQUEST_URI'];
             $date = time();
-            var_dump($_POST);
+            //var_dump($_POST);
             if(isset($_POST['postToWallSubmit'])){
                 $text = $_POST['text'];
                 $query = "INSERT INTO wall (recipient_id, sender_id, sender_name, text, date) VALUES ('$recipientId', '$senderId', '$senderName', '$text', '$date')";
                 mysqli_query($link, $query) or die(mysqli_error($link));
                 $_SESSION['message'] = 'Запись добавлена';
+                header("Location: $server_uri"); die();
 
             }
             if(isset($_POST['subComentSubmit'])){
@@ -464,10 +489,117 @@
                 $text = $_POST['text'];
                 $query = "INSERT INTO answers (post_id, sender_id, sender_name, text, date) VALUES ('$postId', '$senderId', '$senderName', '$text', '$date')";
                 mysqli_query($link, $query) or die(mysqli_error($link));
+
                 $_SESSION['message'] = 'Запись добавлена';
+                header("Location: $server_uri");die();
             }
             
         }
+    }
+    function addMessage($link){
+        if(isset($_POST['messageSubmit']) and !empty($_POST['message'])){
+            $uri = $_SERVER['REQUEST_URI'];
+            $recipientId = $_GET['send_message'];
+            $senderId = $_SESSION['userId'];
+            $senderName = $_SESSION['userName'];
+            $message = $_POST['message'];
+            $date = time();
+
+            $query = "INSERT INTO chat (message, sender_id, sender_name, recipient_id, date) VALUE ('$message', '$senderId', '$senderName', '$recipientId', '$date')";
+            mysqli_query($link, $query) or die(mysqli_error($link));
+            header("Location: $uri");
+            
+            
+        }
+
+    }
+
+
+    function getChat($link){
+       if(empty($_GET['send_message']) AND isset($_SESSION['auth'])){
+            $content = '';
+            $userId = $_SESSION['userId'];
+
+            $query = "SELECT * FROM chat WHERE recipient_id = '$userId' OR sender_id = '$userId'";
+            $result = mysqli_query($link, $query);
+            for($chat = []; $step = mysqli_fetch_assoc($result); $chat[] = $step);
+
+            if($chat){
+              
+               foreach($chat as $value){
+                    
+                $chatValues[] = $value['sender_id'];
+                $chatValues[] = $value['recipient_id'];
+               }
+               $usersChat = trim(str_replace($userId, '', implode(',', array_unique($chatValues))), ',');
+               $in = '('.$usersChat.')';
+               
+
+               
+                $query = "SELECT * FROM users WHERE id IN $in";
+                $result = mysqli_query($link, $query) or die(mysqli_error($link));
+                for($users = []; $step = mysqli_fetch_assoc($result); $users[] = $step);
+                //var_dump($users);
+                if($users){
+                    foreach($users as $value){
+                        $UsersId = $value['id'];
+                        $name = $value['name'];
+                        $img = '/imgsn/'.$value['img'];
+                        $href = '/chat/'.'?send_message='.$value['id'];
+
+                        $content .= "<table>";
+                        $content .= "
+                            <tr>
+                                <td><img src='$img' width='150' height='111'></td>
+                            </tr>
+                            <tr>
+                                <td><a href='$href'>$name</a></td>
+                            </tr>
+                            <tr>
+                                <td>------------------------------------</td>
+                            </tr>";
+                        $content .= "</table>";
+                    }
+                    return $content;
+                }
+
+            }
+
+            
+       }else if(!empty($_GET['send_message'])){
+           $userId = $_SESSION['userId'];
+           $recipient_id = $_GET['send_message'];
+           
+           $content = '';
+           $query = "SELECT * FROM chat WHERE recipient_id = '$recipient_id' OR sender_id = '$recipient_id'";
+           $result = mysqli_query($link, $query);
+
+           for($chat = []; $step = mysqli_fetch_assoc($result); $chat[] = $step);
+
+           if($chat){
+                $content .= "<table>";
+                foreach($chat as $message){
+                    $senderName = $message['sender_name'];
+                    $message = $message['message'];
+                    $date = date("F j, Y, g:i a");
+
+                    $content .="
+                    <tr>
+                        <td>$message</br></td>
+                    </tr>
+                    <tr>
+                        <td>$date</td>
+                    </tr>
+                    <tr>
+                        <td>$senderName</br></br></td>
+                    </tr>";
+                }
+                $content .= "</table>";
+                return $content;
+           }else{
+               $_SESSION['message'] = 'нет сообщений с данным пользователем!';
+           }
+       }
     }
     
     switch($uri){
@@ -480,9 +612,13 @@
         case 'friends':
             $content = friendlist($link);
             break;
+        case 'chat':
+            $content = getChat($link);
+            break;
     }
     
-    addPostToWall($link);
+    addMessage($link);
+    addPostToWall($link, $uri);
     addAndDellFriends($link);
     registration($link);
     auth($link);

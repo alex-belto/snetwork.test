@@ -51,5 +51,14 @@
         </form>";
     }
 
+    function chatForm(){
+        return $formContent = "
+        <form action='' method='POST'>
+            
+            <textarea name='message' placeholder='ваше сообщение...' autofocus></textarea></br></br>
+            <input type='submit' name='messageSubmit'> 
+        </form>";
+    }
+
 
 
